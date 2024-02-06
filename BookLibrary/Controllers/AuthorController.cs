@@ -1,7 +1,9 @@
 ﻿using AutoMapper;
 using BookLibrary.Data;
 using BookLibrary.Dto;
+using BookLibrary.Interface;
 using BookLibrary.Models;
+using BookLibrary.Repository;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BookLibrary.Controllers
@@ -10,23 +12,25 @@ namespace BookLibrary.Controllers
     [ApiController]
     public class AuthorController : Controller
     {
-        private readonly DataContext _context;
+        private readonly IAuthorRepository _authorRepository;
         private readonly IMapper _mapper;
+        private readonly DataContext _context;
 
-        public AuthorController(DataContext context, IMapper mapper)
+        public AuthorController(IAuthorRepository authorRepository, IMapper mapper, DataContext context)
         {
-            _context = context;
+            _authorRepository = authorRepository;
             _mapper = mapper;
+            _context = context;
         }
 
         [HttpGet]
         [ProducesResponseType(200, Type = typeof(IEnumerable<BookAuthor>))]
         public IActionResult getAuthors()
         {
-            var authors = _context.bookAuthors;
+            var authors = _mapper.Map<List<AuthorDto>>(_authorRepository.GetBookAuthors());
 
             if (authors is null)
-                return NotFound("Authoer Not Found");
+                return NotFound("Authoers Not Found");
 
             return Ok(authors);
         }
@@ -34,31 +38,47 @@ namespace BookLibrary.Controllers
         [HttpGet("{authoerId}")]
         public IActionResult getAuthor(int authoerId)
         {
-            var author = _context.bookAuthors.Where(p => p.Id == authoerId).FirstOrDefault();
+            if (!_authorRepository.AuthorExists(authoerId))
+                return NotFound();
 
-            if (author is null)
-                return NotFound("Authoer Not Found");
+            var author = _mapper.Map<AuthorDto>(_authorRepository.GetAuthor(authoerId));
+
+            if(!ModelState.IsValid)
+                return BadRequest(ModelState);
 
             return Ok(author);
         }
 
         [HttpPost]
-        [Route("Add-Authoer")]
-        public IActionResult AddAuthore([FromBody] AuthorDto authorDto)
+        [Route("Create-Authoer")]
+        public IActionResult CreateAuthor([FromBody] AuthorDto authorCreate)
         {
-            var authorName = _context.bookAuthors.Where(p => p.author == authorDto.author).FirstOrDefault();
+            if (authorCreate == null)
+                return BadRequest();
 
-            if (authorName is null)
+            var author = _authorRepository.GetBookAuthors()
+                .Where(a => a.author.Trim().ToUpper() == authorCreate.author.Trim().ToUpper())
+                .FirstOrDefault();
+
+            if (author != null)
             {
-                var author = new BookAuthor
-                {
-                    author = authorDto.author
-                };
-                _context.bookAuthors.Add(author);
-                _context.SaveChanges();
+                ModelState.AddModelError("", "Author Alrady Exists");
+                return StatusCode(422, ModelState);
             }
 
-            return Ok();
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var authorMap = _mapper.Map<BookAuthor>(authorCreate);
+
+            if(!_authorRepository.CreateAuthor(authorMap))
+            {
+                ModelState.AddModelError("", "Somthing Went Wrong");
+                return StatusCode(500, ModelState);
+            }
+
+            return Ok("Successfully created");
+
         }
 
         [HttpPut]

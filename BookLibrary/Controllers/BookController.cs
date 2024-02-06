@@ -23,7 +23,6 @@ namespace BookLibrary.Controllers
             _bookRepository = bookRepository;
             _mapper = mapper;
 
-            //_context = context;
         }
 
         [HttpGet]
@@ -86,18 +85,18 @@ namespace BookLibrary.Controllers
             return Ok(bookDtos);
         }
 
-        [HttpPost]
-        [Route("Insert-book")]
-        public IActionResult InsertBook(int categoryId, int authorId, [FromBody] BookDto book)
-        {
-            var success = _bookRepository.InsertBook(categoryId, authorId, book);
+        //[HttpPost]
+        //[Route("Insert-book")]
+        //public IActionResult InsertBook(int categoryId, int authorId, [FromBody] BookDto book)
+        //{
+        //    var success = _bookRepository.InsertBook(categoryId, authorId, book);
 
-            if (success)
-                return Ok("Book inserted successfully");
-            else
-                return BadRequest("Failed to insert book");
+        //    if (success)
+        //        return Ok("Book inserted successfully");
+        //    else
+        //        return BadRequest("Failed to insert book");
 
-        }
+        //}
 
         [HttpPut]
         [Route("update-book")]
@@ -125,20 +124,20 @@ namespace BookLibrary.Controllers
 
         }
 
-        [HttpGet]
-        [Route("Get-available-Books")]
-        public IActionResult GetAuthorBooks([FromQuery] int authorId)
-        {
-            var book = _mapper.Map<List<BookDto>>(book);
+        //[HttpGet]
+        //[Route("Get-available-Books")]
+        //public IActionResult GetAuthorBooks([FromQuery] int authorId)
+        //{
+        //    var book = _mapper.Map<List<BookDto>>(book);
 
-            if (bookDtos.Count == 0)
-                return NotFound("No Books available");
+        //    if (bookDtos.Count == 0)
+        //        return NotFound("No Books available");
 
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+        //    if (!ModelState.IsValid)
+        //        return BadRequest(ModelState);
 
-            return Ok(bookDtos);
-        }
+        //    return Ok(bookDtos);
+        //}
 
 
 

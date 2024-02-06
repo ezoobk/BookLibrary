@@ -7,5 +7,7 @@ namespace BookLibrary.Interface
         ICollection<BookAuthor> GetBookAuthors();
         BookAuthor GetAuthor(int id);
         bool AuthorExists(int id);
+        bool CreateAuthor(BookAuthor author);
+        bool Save();
     }
 }

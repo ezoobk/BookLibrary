@@ -12,7 +12,7 @@ namespace BookLibrary.Interface
         Book GetBookByName(string name);
         Book GetBook(DateTime releaseDate);
         bool BookExists(int bookId);
-        bool InsertBook(int AuthorId, int CategoryId, BookDto book);
+        bool InsertBook(Book book);
         bool UpdateBook(int bookId, BookDto book);
         bool DeleteBook(int bookId);
         bool Save();

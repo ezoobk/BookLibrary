@@ -9,6 +9,8 @@ namespace BookLibrary.Helper
         public MappingProfile()
         {
             CreateMap<Book, BookDto>();
+            CreateMap<BookAuthor, AuthorDto>();
+            CreateMap<AuthorDto, BookAuthor>();
         }
     }
 }

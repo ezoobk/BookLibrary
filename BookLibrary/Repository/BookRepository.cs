@@ -45,27 +45,9 @@ namespace BookLibrary.Repository
             return saved > 0 ? true : false;
         }
 
-        public bool InsertBook(int categoryId, int authorId, BookDto book)
+        public bool InsertBook(Book book)
         {
-            var bookCategory = _context.bookCategories.FirstOrDefault(p => p.Id == categoryId);
-            var bookAuthor = _context.bookAuthors.FirstOrDefault(p => p.Id == authorId);
-
-            if (bookCategory == null || bookAuthor == null)
-            {
-                return false; // CategoryId or AuthorId not found, return false or throw an exception
-            }
-
-            var newBook = new Book
-            {
-                bookName = book.bookName,
-                releaseDate = book.releaseDate,
-                quantity = book.quantity,
-                bookCategory = bookCategory,
-                bookAuthor = bookAuthor
-            };
-
-            _context.Add(newBook);
-
+            _context.Add(book);
             return Save();
         }
 
