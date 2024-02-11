@@ -3,6 +3,7 @@
     public class RentedBook
     {
         public int Id { get; set; }
+        public int receipt { get; set; }
         public int bookId { get; set; }
         public Book book { get; set; }
         public int memberId { get; set; }

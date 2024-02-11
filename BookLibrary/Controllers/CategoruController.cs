@@ -24,40 +24,55 @@ namespace BookLibrary.Controllers
         [Route("Get-Categories")]
         public IActionResult GetCategories()
         {
-            var categories = _categoryRepository.GetBookCategories();
+            var categories = _mapper.Map<List<CategoryDto>>(_categoryRepository.GetBookCategories());
 
             if (categories is null)
+                return NotFound();
+
+            return Ok(categories);
         }
 
-        //[HttpGet("{categoryId}")]
-        //public IActionResult getCategory(int categoryId)
-        //{
-        //    var category = _context.bookCategories.Where(p => p.Id == categoryId).FirstOrDefault();
+        [HttpGet("{categoryId}")]
+        public IActionResult getCategory(int categoryId)
+        {
+            var category = _mapper.Map<CategoryDto>(_categoryRepository.GetCategory(categoryId));
 
-        //    if (category is null)
-        //        return NotFound("category Not Found");
+            if (category is null)
+                return NotFound("category Not Found");
 
-        //    return Ok(category);
-        //}
+            return Ok(category);
+        }
 
-        //[HttpPost]
-        //[Route("Add-category")]
-        //public IActionResult AddCategory([FromBody] CategoryDto categoryDto)
-        //{
-        //    var categoryName = _context.bookCategories.Where(p => p.category == categoryDto.category).FirstOrDefault();
+        [HttpPost]
+        [Route("Add-category")]
+        public IActionResult AddCategory([FromBody] CategoryDto categoryCreate)
+        {
+            if (categoryCreate == null)
+                return BadRequest();
 
-        //    if (categoryName is null)
-        //    {
-        //        var category = new BookCategory
-        //        {
-        //            category = categoryDto.category
-        //        };
-        //        _context.bookCategories.Add(category);
-        //        _context.SaveChanges();
-        //    }
+            var newCategory = _categoryRepository.GetBookCategories()
+                .Where(c => c.category.Trim().ToUpper() == categoryCreate.category.Trim().ToUpper())
+                .FirstOrDefault();
 
-        //    return Ok();
-        //}
+            if (newCategory != null)
+            {
+                ModelState.AddModelError("", "Category Alrady Exists");
+                return StatusCode(422, ModelState);
+            }
+
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var categoryMap = _mapper.Map<BookCategory>(categoryCreate);
+
+            if (!_categoryRepository.CreateCategory(categoryMap))
+            {
+                ModelState.AddModelError("", "Somthing Went Wrong");
+                return StatusCode(500, ModelState);
+            }
+
+            return Ok("Successfully created");
+        }
 
         //[HttpPut]
         //[Route("update-category")]

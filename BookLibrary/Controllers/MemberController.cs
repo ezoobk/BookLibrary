@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using BookLibrary.Data;
 using BookLibrary.Dto;
+using BookLibrary.Interface;
 using BookLibrary.Models;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,57 +13,71 @@ namespace BookLibrary.Controllers
     {
         private readonly DataContext _context;
         private readonly IMapper _mapper;
+        private readonly IMemberRepository _memberRepository;
 
-        public MemberController(DataContext context, IMapper mapper)
+        public MemberController(DataContext context, IMapper mapper, IMemberRepository memberRepository)
         {
             _context = context;
             _mapper = mapper;
+            _memberRepository = memberRepository;
         }
 
         [HttpGet]
         [ProducesResponseType(200, Type = typeof(IEnumerable<Member>))]
         public IActionResult getMembers()
         {
-            var members = _context.members;
+            var members = _mapper.Map<List<MemberDto>>(_memberRepository.GetMembers());
 
             if (members is null)
-                return NotFound("members Not Found");
+                return NotFound("Members Not Found");
 
             return Ok(members);
         }
 
         [HttpGet("{memberId}")]
-        public IActionResult getAuthor(int memberId)
+        public IActionResult getMember(int memberId)
         {
-            var member = _context.members.Where(p => p.Id == memberId).FirstOrDefault();
+            var member = _mapper.Map<MemberDto>(_memberRepository.GetMember(memberId));
 
             if (member is null)
-                return NotFound("Member Not Found");
+                return NotFound("Members Not Found");
 
             return Ok(member);
+
         }
 
         [HttpPost]
         [Route("Add-Member")]
-        public IActionResult AddAuthore([FromBody] MemberDto memberDto)
+        public IActionResult AddMember([FromBody] MemberDto memberCreate)
         {
-            var member = _context.members.Where(p => p.fullName == memberDto.fullName).FirstOrDefault();
+            if (memberCreate == null)
+                return BadRequest();
 
-            if (member is null)
+            var newMember = _memberRepository.GetMembers()
+                .Where(c => c.fullName.Trim().ToUpper() == memberCreate.fullName.Trim().ToUpper()
+                 && c.phoneNum == memberCreate.phoneNum)
+                .FirstOrDefault();
+
+
+
+            if (newMember != null)
             {
-                var newMember = new Member
-                {
-                    fullName = memberDto.fullName,
-                    joiningDate = memberDto.joiningDate,
-                    phoneNum = memberDto.phoneNum,
-                };
-                _context.members.Add(newMember);
-                _context.SaveChanges();
+                ModelState.AddModelError("", "Member Alrady Exists");
+                return StatusCode(422, ModelState);
             }
-            else
-                return BadRequest("تكرار بيانات");
 
-            return Ok();
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var MemberMap = _mapper.Map<Member>(memberCreate);
+
+            if (!_memberRepository.CreateMember(MemberMap))
+            {
+                ModelState.AddModelError("", "Somthing Went Wrong");
+                return StatusCode(500, ModelState);
+            }
+
+            return Ok("Successfully created");
         }
 
         [HttpPut]
@@ -104,5 +119,12 @@ namespace BookLibrary.Controllers
 
             return Ok(memberDb);
         }
+
+
+
+
+
+
     }
+    
 }

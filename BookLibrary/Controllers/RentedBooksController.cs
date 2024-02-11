@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using BookLibrary.Data;
 using BookLibrary.Dto;
+using BookLibrary.Interface;
 using BookLibrary.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,128 +14,105 @@ namespace BookLibrary.Controllers
     [ApiController]
     public class RentedBooksController : Controller
     {
-        private readonly DataContext _context;
+        private readonly IRentedBookRepository _rentedBook;
         private readonly IMapper _mapper;
 
-        public RentedBooksController(DataContext context, IMapper mapper)
+        public RentedBooksController(IRentedBookRepository rentedBook, IMapper mapper)
         {
-            _context = context;
+            _rentedBook = rentedBook;
             _mapper = mapper;
         }
 
         [HttpPost]
         [Route("book-rent")]
-        public IActionResult BookRent([FromBody] RentBookDto rentBookDto)
+        public IActionResult BookRent([FromQuery] int bookId, [FromQuery] int memberId, [FromBody] RentingDto rentingDto)
         {
-            var book = _context.books.Where(p => p.Id == rentBookDto.bookId).FirstOrDefault();
-            var member = _context.members.Where(p => p.Id == rentBookDto.memberId).FirstOrDefault();
+            if (!_rentedBook.bookExists(bookId))
+                return BadRequest("book is not found");
 
-            if (book == null || member == null)
-                return BadRequest("member or book is not found");
+            if (!_rentedBook.memberExists(memberId))
+                return BadRequest("member is not found");
 
-            int rentedBooksCount = _context.rentedBooks.Count(c => c.bookId == rentBookDto.bookId && c.Ruternd == false);
 
-            if ((int)book.quantity - rentedBooksCount <= 0)
-                return NotFound("book is out");
-            else
+            int rNum = _rentedBook.getReceiptNum();
+
+            var rent = new RentedBook
             {
-                var rent = new RentedBook
-                {
-                    bookId = rentBookDto.bookId,
-                    memberId = rentBookDto.memberId,
-                    rentDate = rentBookDto.rentDate,
-                    rentDue = rentBookDto.rentDue,
-                    Ruternd = false,
-                };
+                bookId = bookId,
+                memberId = memberId,
+                receipt = rNum,
+                rentDate = rentingDto.rentDate,
+                rentDue = rentingDto.rentDate.AddDays(30),
+                Ruternd = false,
+            };
 
-                _context.rentedBooks.Add(rent);
-                _context.SaveChanges();
+            var rntedBookMap = _mapper.Map<RentedBook>(rent);
 
-                return Ok(rent);
-
+            if (!_rentedBook.rentBook(rntedBookMap))
+            {
+                ModelState.AddModelError("", "Somthing Went Wrong");
+                return StatusCode(500, ModelState);
             }
+
+            _rentedBook.rentReturnBook(bookId, 0);
+
+            return Ok("Successfully created");
 
         }
 
         [HttpPut]
         [Route("Ruturn-Book")]
-        public IActionResult RuturnBook(int bookId, int memberId)
+        public IActionResult RuturnBook([FromQuery] int receipt, int memberId, int bookId)
         {
-            var book = _context.rentedBooks.Where(c => c.bookId == bookId && c.Ruternd == false && c.memberId == memberId).FirstOrDefault();
+            if (!_rentedBook.RentedBookExists(receipt, memberId, bookId))
+                return NotFound();
 
-            if (book == null)
-                return BadRequest("book is not found");
-            if (DateTime.Now > book.rentDue)
-                return BadRequest("book due time has passed");
+            if (!_rentedBook.rentReturnBook(bookId, receipt))
+                return BadRequest();
 
-            book.Ruternd = true;
-            _context.SaveChanges();
-
-            return Ok(book);
-
+            return Ok("Successfully Ruturnrd");
         }
 
         [HttpGet]
         [Route("get-rented-books")]
         public IActionResult GetRentedBooks()
         {
-            var rentedBooks = _context.rentedBooks
-                .Where(rb => rb.Ruternd == false)
-                .Select(rb => new
-                {
-                    rb.Id,
-                    BookTitle = rb.book.bookName, 
-                    MemberName = rb.member.fullName,
-                    RentDate = rb.rentDate,
-                    RentDue = rb.rentDue,
-                }).ToList();
+            var rentedBooks = _mapper.Map<List<RentBookDto>>(_rentedBook.GetRentedBooks());
 
-            if (rentedBooks.Count == 0)
-                return BadRequest("Rented books not found");
+            if (rentedBooks == null)
+                return BadRequest("no rented books");
 
             return Ok(rentedBooks);
-
         }
 
         [HttpGet]
         [Route("get-rented-books-by-member")]
         public IActionResult GetRentedBooksByMember([FromQuery] int memberId)
         {
-            var rentedBooks = _context.rentedBooks
-                .Where(rb => rb.Ruternd == false && rb.memberId == memberId)
-                .Select(rb => new
-                {
-                    rb.Id,
-                    BookTitle = rb.book.bookName,
-                    RentDate = rb.rentDate,
-                    RentDue = rb.rentDue,
-                }).ToList();
+            if(!_rentedBook.RentedBookExists(null, memberId, null))
+                return BadRequest("there are no rented books by this member");
 
-            if (rentedBooks.Count == 0)
-                return BadRequest("member has no rented books");
+            var books = _mapper.Map<List<rentDto>>(_rentedBook.GetRentedBooksByMember(memberId));
 
-            return Ok(rentedBooks);
+            if (books == null)
+                return BadRequest("something went wrong");
 
+            return Ok(books);
         }
 
         [HttpGet]
         [Route("get-rented-members-by-book")]
         public IActionResult GetRentedMembersByBook([FromQuery] int bookId)
         {
-            var rentedBooks = _context.rentedBooks
-                .Where(rb => rb.Ruternd == false && rb.bookId == bookId)
-                .Select(rb => new
-                {
-                    rb.Id,
-                    MemberName = rb.member.fullName,
-                    RentDate = rb.rentDate,
-                    RentDue = rb.rentDue,
-                }).ToList();
+            if(!_rentedBook.RentedBookExists(null, null, bookId))
+                return BadRequest("there are no members rented this book");
 
-            if (rentedBooks.Count == 0)
-                return BadRequest("book has nor been rented");
+            var members = _mapper.Map<List<rentDto>>(_rentedBook.GetMembersByRentedBooks(bookId));
 
-            return Ok(rentedBooks);
+            if (members == null)
+                return BadRequest("something went wrong");
+
+            return Ok(members);
 
         }
 
@@ -142,22 +120,15 @@ namespace BookLibrary.Controllers
         [Route("get-rent-due-date")]
         public IActionResult GetRentDueDate()
         {
-            var rentedBooks = _context.rentedBooks
-                .Where(rb => rb.Ruternd == false && rb.rentDue < DateTime.Now)
-                .Select(rb => new
-                {
-                    rb.Id,
-                    BookTitle = rb.book.bookName,
-                    MemberName = rb.member.fullName,
-                    RentDate = rb.rentDate,
-                    RentDue = rb.rentDue,
-                }).ToList();
+            if(!_rentedBook.RentedBookExists(null, null, null))
+                return BadRequest("no rented books");
 
-            if (rentedBooks.Count == 0)
-                return BadRequest("no due date");
+            var rented = _mapper.Map<List<rentDto>>(_rentedBook.GetRentDueBooks());
 
-            return Ok(rentedBooks);
+            if (rented == null)
+                return BadRequest("something went wrong");
 
+            return Ok(rented);
         }
 
 

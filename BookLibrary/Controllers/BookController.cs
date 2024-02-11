@@ -15,7 +15,6 @@ namespace BookLibrary.Controllers
         private readonly IBookRepository _bookRepository;
         private readonly IMapper _mapper;
 
-        //private readonly DataContext _context;
 
         public BookController(IBookRepository bookRepository, IMapper mapper)
         {

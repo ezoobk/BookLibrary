@@ -20,7 +20,8 @@ namespace BookLibrary.Repository
 
         public bool CreateCategory(BookCategory category)
         {
-            throw new NotImplementedException();
+            _context.Add(category);
+            return Save();
         }
 
         public ICollection<BookCategory> GetBookCategories()
