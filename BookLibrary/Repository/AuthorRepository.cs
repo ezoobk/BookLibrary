@@ -25,6 +25,12 @@ namespace BookLibrary.Repository
             return Save();
         }
 
+        public bool DeleteAuthor(BookAuthor author)
+        {
+            _context.Remove(author);
+            return Save();
+        }
+
         public BookAuthor GetAuthor(int id)
         {
             return _context.bookAuthors.Where(p => p.Id == id).FirstOrDefault();
@@ -39,6 +45,12 @@ namespace BookLibrary.Repository
         {
             var saved = _context.SaveChanges();
             return saved > 0 ? true : false;
+        }
+
+        public bool UpdateAuthor(BookAuthor author)
+        {
+            _context.Update(author);
+            return Save();
         }
     }
 }

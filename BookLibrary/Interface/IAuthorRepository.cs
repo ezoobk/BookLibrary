@@ -8,6 +8,8 @@ namespace BookLibrary.Interface
         BookAuthor GetAuthor(int id);
         bool AuthorExists(int id);
         bool CreateAuthor(BookAuthor author);
+        bool UpdateAuthor(BookAuthor author);
+        bool DeleteAuthor(BookAuthor author);
         bool Save();
     }
 }

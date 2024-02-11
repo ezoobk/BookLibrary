@@ -36,6 +36,7 @@ namespace BookLibrary.Controllers
         }
 
         [HttpGet("{authoerId}")]
+        [Route("get-authoerId")]
         public IActionResult getAuthor(int authoerId)
         {
             if (!_authorRepository.AuthorExists(authoerId))
@@ -85,33 +86,49 @@ namespace BookLibrary.Controllers
         [Route("update-author")]
         public IActionResult updateauthor([FromBody] AuthorDto authorDto, [FromQuery] int authorId)
         {
-            var AuthorDb = _context.bookAuthors.Where(p => p.Id == authorId).FirstOrDefault();
-            if (AuthorDb is null)
-                return NotFound("Author is Not Found");
+            if (authorDto == null | authorId != authorDto.Id)
+                return BadRequest(ModelState);
 
-            AuthorDb.author = authorDto.author;
+            if(!_authorRepository.AuthorExists(authorId))
+                return BadRequest("Author not found");
 
-            _context.SaveChanges();
+            if (!ModelState.IsValid)
+                return BadRequest();
 
-            return Ok(AuthorDb);
+            var authorMap = _mapper.Map<BookAuthor>(authorDto);
+            
+            if(!_authorRepository.UpdateAuthor(authorMap))
+            {
+                ModelState.AddModelError("", "Somthing Went Wrong");
+                return StatusCode(500, ModelState);
+            }
+
+            return NoContent();
         }
 
         [HttpDelete]
         [Route("delete-author")]
-        public async Task<ActionResult<List<BookAuthor>>> deleteAuthor(int id)
+        public IActionResult deleteAuthor(int authorId)
         {
-            var AuthorDb = await _context.bookAuthors.FindAsync(id);
+            if (!_authorRepository.AuthorExists(authorId))
+                return BadRequest("Author not found");
 
-            if (AuthorDb is null)
-                return NotFound("Author is Not Found");
 
-            _context.bookAuthors.Remove(AuthorDb);
-            await _context.SaveChangesAsync();
+            var authorDelete = _authorRepository.GetAuthor(authorId);
 
-            return Ok(AuthorDb);
+            if (_authorRepository.DeleteAuthor(authorDelete))
+            {
+                ModelState.AddModelError("", "Somthing Went Wrong");
+                return StatusCode(500, ModelState);
+            }
+
+            return NoContent();
         }
 
 
 
+
+
     }
+    
 }
